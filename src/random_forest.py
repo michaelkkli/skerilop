@@ -92,7 +92,7 @@ class RandomForest():
             votes_greater = np.sum(fit[i] >= j for i, j in feature_split_greater)
 
             all_votes = votes_less + votes_greater
-            percentage_votes = all_votes/self.num_trees
+            percentage_votes = float(all_votes)/self.num_trees
 
             if percentage_votes >= 0.5:
                 yield True, percentage_votes
