@@ -165,12 +165,22 @@ class RandomForest():
 if __name__ == '__main__':
     RF = RandomForest()
 
-    with open('wdbc.data') as f:
-        Y = np.genfromtxt(f, delimiter=',', usecols=(1), converters={1: lambda x: 'M' == x})
-        f.seek(0)
-        A = np.genfromtxt(f, delimiter=',', usecols=[i for i in range(2,32)],
-                          converters={1: lambda x: 'M' == x})
-        f.close()
+    use_wdbc = True
 
-    RF.reset_bagging(200, int(A.shape[0]*2./3), A, Y)
-    print(RF.out_of_bag_stats())
+    if use_wdbc:
+        with open('wdbc.data') as f:
+            Y = np.genfromtxt(f, delimiter=',', usecols=(1), converters={1: lambda x: 'M' == x})
+            f.seek(0)
+            A = np.genfromtxt(f, delimiter=',', usecols=[i for i in range(2,32)])
+            f.close()
+
+        RF.reset_bagging(200, int(A.shape[0]*2./3), A, Y)
+        print(RF.out_of_bag_stats())
+    else:
+        with open('ntd.csv') as f:
+            Y = np.genfromtxt(f, skip_header=1, delimiter=',', usecols=(21), converters={21: lambda x: 1 == x})
+            f.seek(0)
+            A = np.genfromtxt(f, skip_header=1, delimiter=',', usecols=range(0,21))
+            f.close()
+        RF.reset_bagging(200, int(A.shape[0]*2./3), A, Y)
+        print(RF.out_of_bag_stats())
