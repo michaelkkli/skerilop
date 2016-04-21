@@ -60,15 +60,30 @@ class RandomForest():
 
             col = random.randrange(0, num_features)
 
-            median = np.median(bag[:, col])
+            if False:
+                split_val = np.median(bag[:, col])
+            else:
+                ntotal = bag.shape[0]
+                info_best = 0.
+                split_val = None
+                for tries in range(10):
+                    split_val_try = np.random.uniform(np.amin(bag[:, col], axis=0), np.amax(bag[:, col], axis=0))
+                    nleft = len(np.where(bag[:, col] < split_val_try)[0])
+                    nright = ntotal - nleft
+                    q1 = float(nleft)/ntotal
+                    q2 = float(nright)/ntotal
+                    info_try = -(q1*np.log2(q1) + q2*np.log2(q2))
+                    if info_try > info_best:
+                        info_best = info_try
+                        split_val = split_val_try
 
-            num_less = np.sum(bag_classcat[i] for i in range(bag_size) if bag[i, col] < median)
+            num_less = np.sum(bag_classcat[i] for i in range(bag_size) if bag[i, col] < split_val)
 
             if (num_less < half_num_examples):
-                self.feature_split_greater.append((col, median))
+                self.feature_split_greater.append((col, split_val))
                 self.bag_index_count_greater.append(bag_index_count)
             else:
-                self.feature_split_less.append((col, median))
+                self.feature_split_less.append((col, split_val))
                 self.bag_index_count_less.append(bag_index_count)
 
     def transform(self, features_it):
@@ -153,9 +168,9 @@ if __name__ == '__main__':
     with open('wdbc.data') as f:
         Y = np.genfromtxt(f, delimiter=',', usecols=(1), converters={1: lambda x: 'M' == x})
         f.seek(0)
-        A = np.genfromtxt(f, delimiter=',', usecols=[i for i in range(0,32) if i != 1],
+        A = np.genfromtxt(f, delimiter=',', usecols=[i for i in range(2,32)],
                           converters={1: lambda x: 'M' == x})
         f.close()
 
-    RF.reset_bagging(400, int(A.shape[0]*2./3), A, Y)
+    RF.reset_bagging(200, int(A.shape[0]*2./3), A, Y)
     print(RF.out_of_bag_stats())
