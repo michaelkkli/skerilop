@@ -10,10 +10,10 @@ def information_gain(n1, n2, p1, p2):
     n2p2 = float(n2) + p2
     n = float(n1) + n2
     p = float(p1) + p2
-    np = float(n) + p
+    pn = float(n) + p
 
-    q1 = n/np
-    q2 = p/np
+    q1 = n/pn
+    q2 = p/pn
     q3 = n1/n1p1
     q4 = p1/n1p1
     q5 = n2/n2p2
