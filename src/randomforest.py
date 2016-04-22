@@ -33,14 +33,52 @@ class RandomForest():
             i.outofbag_add_votes(votes_array_TF)
 
         num_diff = 0
+        strength_numer = 0.
+        sum_squares = 0.
+        sd_numer = 0.
+
         for i in self.training_set_indicies:
-            forest_class = votes_array_TF[i, 0] > votes_array_TF[i, 1]
-            if forest_class != False:
+            Tvotes = votes_array_TF[i, 0]
+            Fvotes = votes_array_TF[i, 1]
+            forest_class = (Tvotes > Fvotes)
+
+            if forest_class == self.features_class_array[i]: # RandomForest is right.
+                if self.features_class_array[i]:
+                    tmp = (float(Tvotes)-Fvotes)/(Tvotes + Fvotes)
+                else:
+                    tmp = (float(Fvotes)-Tvotes)/(Tvotes + Fvotes)
+            else: # RandomForest is wrong.
                 num_diff += 1
+                if self.features_class_array[i]:
+                    tmp = (float(Fvotes)-Tvotes)/(Tvotes + Fvotes)
+                else:
+                    tmp = (float(Tvotes)-Fvotes)/(Tvotes + Fvotes)
+
+            strength_numer += tmp
+            sum_squares += tmp*tmp
+
+            if self.features_class_array[i]:
+                p1 = float(Tvotes)/(Tvotes + Fvotes) # Percentage that voted correctly.
+                p2 = float(Fvotes)/(Tvotes + Fvotes) # Percentage that voted incorrectly.
+            else:
+                p1 = float(Fvotes)/(Tvotes + Fvotes)
+                p2 = float(Tvotes)/(Tvotes + Fvotes)
+
+            p1mp2 = p1 - p2
+            sd_numer += np.sqrt(p1 + p2 + p1mp2*p1mp2)
+
+        strength = strength_numer/len(self.training_set_indicies) 
+
+        var_mr = sum_squares/len(self.training_set_indicies) - strength*strength
+        Esd = sd_numer/len(self.training_set_indicies)
+        Esd_squared = Esd*Esd
+        correlation_rhohat = var_mr/Esd_squared
 
         generalized_error = float(num_diff)/len(self.training_set_indicies)
 
-        return {'generalized_error': generalized_error} 
+        return {'generalized_error': generalized_error,
+                'strength' : strength,
+                'correlation' : correlation_rhohat} 
 
 class dtree():
     def __init__(self, F, training_set_indicies, features_array, features_class_array, obi):
@@ -89,7 +127,7 @@ class dnode():
         info_gain_best = 0.
 
         # Determine splits.
-        for _ in range(10):
+        for _ in range(20):
             split_val_try = np.random.uniform(amin, amax)
 
             left_inds = np.array(training_set_indicies)[transformed_features < split_val_try]
@@ -114,6 +152,9 @@ class dnode():
         left_inds = np.array(training_set_indicies)[transformed_features < self.split_vals[0]]
         right_inds = np.array(training_set_indicies)[transformed_features >= self.split_vals[0]]
 
+        if left_inds.shape[0] == 0 or right_inds.shape[0] == 0:
+            self.height_in_tree = 0
+
         if self.height_in_tree > 0: # Create child dnodes.
             self.child_nodes = [
                 dnode(self.height_in_tree-1, left_inds, features_array, features_class_array),
@@ -125,15 +166,20 @@ class dnode():
             right_T = np.sum(features_class_array[right_inds])
             right_F = len(right_inds) - right_T
 
-            if left_T + left_F == 0 or right_T + right_F == 0:
-                raise RuntimeError('Empty left or right.')
+            if left_inds.shape[0] > 0 and right_inds.shape[0] > 0:
+                left_prob = float(left_T)/(left_T + left_F)
+                right_prob = float(right_T)/(right_T + right_F)
 
-            left_prob = float(left_T)/(left_T + left_F)
-            right_prob = float(right_T)/(right_T + right_F)
-
-            self.child_nodes = [
-                lambda _, p=left_prob: True if random.random() < p else False,
-                lambda _, p=right_prob: True if random.random() < p else False]
+                self.child_nodes = [
+                    lambda _, p=left_prob: True if random.random() < p else False,
+                    lambda _, p=right_prob: True if random.random() < p else False]
+            else:
+                if left_T + right_T > left_F + right_F:
+                    self.child_nodes = [ lambda _: True ]    
+                elif left_T + right_T <= left_F + right_F:
+                    self.child_nodes = [ lambda _: False ]
+                else:
+                    self.child_odes = [ lambda _: True if random.random() < 0.5 else False ]
 
     def transform(self, input_features):
         """ Transform array of features and return classifications. """
@@ -152,7 +198,7 @@ class dnode():
             return self.child_nodes[-1](None)
 
 if __name__ == '__main__':
-    use_wdbc = True
+    use_wdbc = False
 
     if use_wdbc:
         with open('wdbc.data') as f:
@@ -160,8 +206,6 @@ if __name__ == '__main__':
             f.seek(0)
             A = np.genfromtxt(f, delimiter=',', usecols=[i for i in range(2,32)])
             f.close()
-        RF = RandomForest(200, 2, range(A.shape[0]), A, Y)
-        RF.summary()
     else:
         with open('ntd.csv') as f:
             Y = np.genfromtxt(f, skip_header=1, delimiter=',', usecols=(21), converters={21: lambda x: '1' == x})
@@ -169,5 +213,7 @@ if __name__ == '__main__':
             A = np.genfromtxt(f, skip_header=1, delimiter=',', usecols=range(0,21))
             f.close()
             print('Finished loading file.')
-        RF = RandomForest(200, 1, range(A.shape[0]), A, Y)
+
+    for _ in range(1):
+        RF = RandomForest(1000, 1, range(A.shape[0]), A, Y)
         RF.summary()
