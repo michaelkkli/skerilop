@@ -6,6 +6,7 @@ import random
 
 class RandomForest():
     def __init__(self, num_trees, F, training_set_indicies, features_array, features_class_array):
+        self.context = { 'F' : F, 'num_trees' : num_trees }
         self.training_set_indicies = training_set_indicies
         self.features_array = features_array
         self.features_class_array = features_class_array
@@ -13,6 +14,7 @@ class RandomForest():
 
         num_training_examples = len(training_set_indicies)
         num_inbag = int(num_training_examples*2./3.)
+        self.context['num_inbag'] = num_inbag
         num_outofbag = num_training_examples - num_inbag
 
         training_set_indicies_set = set(training_set_indicies)
@@ -24,6 +26,7 @@ class RandomForest():
             self.trees.append(dtree(F, bag_indicies, features_array, features_class_array, outofbag_indicies))
 
     def summary(self):
+        print(self.context)
         print(self.outofbag_stats())
 
     def outofbag_stats(self):
@@ -36,33 +39,48 @@ class RandomForest():
         strength_numer = 0.
         sum_squares = 0.
         sd_numer = 0.
+        logloss_numer = 0.
 
         for i in self.training_set_indicies:
             Tvotes = votes_array_TF[i, 0]
             Fvotes = votes_array_TF[i, 1]
             forest_class = (Tvotes > Fvotes)
 
+            TpF = float(Tvotes) + Fvotes
+            percentage_votesT = float(Tvotes)/TpF
+            percentage_votesF = float(Fvotes)/TpF
+            TmF_TpF = (float(Tvotes)-Fvotes)/TpF
+
             if forest_class == self.features_class_array[i]: # RandomForest is right.
                 if self.features_class_array[i]:
-                    tmp = (float(Tvotes)-Fvotes)/(Tvotes + Fvotes)
+                    tmp = TmF_TpF
                 else:
-                    tmp = (float(Fvotes)-Tvotes)/(Tvotes + Fvotes)
+                    tmp = -TmF_TpF
             else: # RandomForest is wrong.
                 num_diff += 1
                 if self.features_class_array[i]:
-                    tmp = (float(Fvotes)-Tvotes)/(Tvotes + Fvotes)
+                    tmp = -TmF_TpF
                 else:
-                    tmp = (float(Tvotes)-Fvotes)/(Tvotes + Fvotes)
+                    tmp = TmF_TpF
 
             strength_numer += tmp
             sum_squares += tmp*tmp
-
+            
+            ll_eps = 1e-15
+            ll_upper = 1. - ll_eps
             if self.features_class_array[i]:
-                p1 = float(Tvotes)/(Tvotes + Fvotes) # Percentage that voted correctly.
-                p2 = float(Fvotes)/(Tvotes + Fvotes) # Percentage that voted incorrectly.
+                p1 = percentage_votesT # Percentage that voted correctly.
+                p2 = percentage_votesF # Percentage that voted incorrectly.
             else:
-                p1 = float(Fvotes)/(Tvotes + Fvotes)
-                p2 = float(Tvotes)/(Tvotes + Fvotes)
+                p1 = percentage_votesF
+                p2 = percentage_votesT
+
+            if ll_eps < p1 and p1 < ll_upper:
+                logloss_numer += np.log(p1)
+            elif p1 > ll_upper:
+                logloss_numer += np.log(ll_upper)
+            else:
+                logloss_numer += np.log(ll_eps)
 
             p1mp2 = p1 - p2
             sd_numer += np.sqrt(p1 + p2 + p1mp2*p1mp2)
@@ -76,9 +94,12 @@ class RandomForest():
 
         generalized_error = float(num_diff)/len(self.training_set_indicies)
 
+        logloss = -1.*logloss_numer/len(self.training_set_indicies)
+
         return {'generalized_error': generalized_error,
                 'strength' : strength,
-                'correlation' : correlation_rhohat} 
+                'correlation' : correlation_rhohat,
+                'logloss' : logloss} 
 
 class dtree():
     def __init__(self, F, training_set_indicies, features_array, features_class_array, obi):
@@ -114,6 +135,7 @@ class dnode():
         self.child_nodes = []
 
         num_features = features_array.shape[1]
+
         self.features_indicies = [random.randrange(0, num_features)]
 
         if self.weights == None and len(self.features_indicies) == 1:
@@ -215,5 +237,5 @@ if __name__ == '__main__':
             print('Finished loading file.')
 
     for _ in range(1):
-        RF = RandomForest(1000, 1, range(A.shape[0]), A, Y)
+        RF = RandomForest(200, 2, range(A.shape[0]), A, Y)
         RF.summary()
