@@ -1,16 +1,16 @@
 #! /usr/bin/python
 import numpy as np
-    """
+"""
     n, p might represent left and right
     1, 2 might represent false and true
-    """
+"""
 
 def information_gain(n1, n2, p1, p2):
-    float(n1p1) = n1 + p1
-    float(n2p2) = n2 + p2
-    float(n) = n1 + n2
-    float(p) = p1 + p2
-    float(np) = n + p
+    n1p1 = float(n1) + p1
+    n2p2 = float(n2) + p2
+    n = float(n1) + n2
+    p = float(p1) + p2
+    np = float(n) + p
 
     q1 = n/np
     q2 = p/np
