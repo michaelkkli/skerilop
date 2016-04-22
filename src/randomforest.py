@@ -101,26 +101,32 @@ class dnode():
             right_T = np.sum(features_class_array[right_inds])
             right_F = len(right_inds) - right_T
 
+            if left_T + right_T == 0 or left_F + right_F == 0:
+                self.split_vals = [split_val_try]
+                self.height_in_tree = 0
+                break
+
             info_gain = information_gain(left_F, left_T, right_F, right_T)
             if info_gain > info_gain_best:
                 info_gain_best = info_gain
                 self.split_vals = [split_val_try]
-            pass
-        split_val_try = None
 
         left_inds = np.array(training_set_indicies)[transformed_features < self.split_vals[0]]
         right_inds = np.array(training_set_indicies)[transformed_features >= self.split_vals[0]]
 
         if self.height_in_tree > 0: # Create child dnodes.
             self.child_nodes = [
-                dnodes(self.height_in_tree-1, left_inds, features_array, features_class_array),
-                dnodes(self.height_in_tree-1, right_inds, features_array, features_class_array)]
+                dnode(self.height_in_tree-1, left_inds, features_array, features_class_array),
+                dnode(self.height_in_tree-1, right_inds, features_array, features_class_array)]
         else: # Create classifications
             left_T = np.sum(features_class_array[left_inds])
             left_F = len(left_inds) - left_T
 
             right_T = np.sum(features_class_array[right_inds])
             right_F = len(right_inds) - right_T
+
+            if left_T + left_F == 0 or right_T + right_F == 0:
+                raise RuntimeError('Empty left or right.')
 
             left_prob = float(left_T)/(left_T + left_F)
             right_prob = float(right_T)/(right_T + right_F)
@@ -154,7 +160,7 @@ if __name__ == '__main__':
             f.seek(0)
             A = np.genfromtxt(f, delimiter=',', usecols=[i for i in range(2,32)])
             f.close()
-        RF = RandomForest(200, 1, range(A.shape[0]), A, Y)
+        RF = RandomForest(200, 2, range(A.shape[0]), A, Y)
         RF.summary()
     else:
         with open('ntd.csv') as f:
