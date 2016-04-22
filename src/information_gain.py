@@ -12,26 +12,25 @@ def information_gain(n1, n2, p1, p2):
     p = float(p1) + p2
     pn = float(n) + p
 
-    q1 = n/pn
-    q2 = p/pn
-    q3 = n1/n1p1
-    q4 = p1/n1p1
-    q5 = n2/n2p2
-    q6 = p2/n2p2
-
     current = 0.
     rem1 = 0.
     rem2 = 0.
 
     eps = 0.
 
-    if q1 > eps:
-        current += q1*np.log2(q1)
-    if q2 > eps:
-        current += q2*np.log2(q2)
-    current *= -1.
+    if pn > eps:
+        q1 = n/pn
+        q2 = p/pn
+        if q1 > eps:
+            current += q1*np.log2(q1)
+        if q2 > eps:
+            current += q2*np.log2(q2)
+        current *= -1.
 
     if n1p1 > eps:
+        q3 = n1/n1p1
+        q4 = p1/n1p1
+
         if q3 > eps:
             rem1 += q3*np.log2(q3)
         if q4 > eps:
@@ -39,6 +38,9 @@ def information_gain(n1, n2, p1, p2):
         rem1 *= -n1p1/pn
 
     if n2p2 > eps:
+        q5 = n2/n2p2
+        q6 = p2/n2p2
+
         if q5 > eps:
             rem2 += q5*np.log2(q5)
         if q6 > eps:
