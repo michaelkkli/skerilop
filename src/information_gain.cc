@@ -55,7 +55,7 @@ double information_gain (int n1, int n2, int p1, int p2)
         rem2 *= -n2p2/pn;
     }
 
-    remainder = rem1 + rem2;
+    double remainder = rem1 + rem2;
 
     return current - remainder;
 }
