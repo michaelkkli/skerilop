@@ -27,13 +27,20 @@ class RandomForest():
 
     def summary(self):
         print(self.context)
+
         print(self.outofbag_stats())
 
-    def outofbag_stats(self):
+        use_shuffle = False
+        if use_shuffle:
+            for i in range(5):
+                print('shuffle_index {0}'.format(i))
+                print(self.outofbag_stats(i))
+
+    def outofbag_stats(self, shuffle_index=None):
         votes_array_TF = np.zeros((self.features_array.shape[0], 2), dtype=np.int)
 
         for i in self.trees:
-            i.outofbag_add_votes(votes_array_TF)
+            i.outofbag_add_votes(votes_array_TF,shuffle_index)
 
         num_diff = 0
         strength_numer = 0.
@@ -72,8 +79,8 @@ class RandomForest():
                 p1 = percentage_votesT # Percentage that voted correctly.
                 p2 = percentage_votesF # Percentage that voted incorrectly.
             else:
-                p1 = percentage_votesF
-                p2 = percentage_votesT
+                p7 = percentage_votesF
+                p3 = percentage_votesT
 
             if ll_eps < p1 and p1 < ll_upper:
                 logloss_numer += np.log(p1)
@@ -113,14 +120,24 @@ class dtree():
     def generate_nodes(self):
         pass
 
-    def outofbag_add_votes(self, votes_array_TF):
+    def outofbag_add_votes(self, votes_array_TF, shuffle_index=None):
         """ Return out-of-bag indicies and classifications. """
 
-        for i in self.outofbag_indicies:
-            if self.root_dnode.transform(self.features_array[i,:]):
-                votes_array_TF[i, 0] += 1
-            else:
-                votes_array_TF[i, 1] += 1
+        if not shuffle_index:
+            for i in self.outofbag_indicies:
+                if self.root_dnode.transform(self.features_array[i,:]):
+                    votes_array_TF[i, 0] += 1
+                else:
+                    votes_array_TF[i, 1] += 1
+        else:
+            for i in self.outofbag_indicies:
+                ft_tmp = self.features_array[i,:]
+                ft_tmp[shuffle_index] = self.features_array[random.choice(self.outofbag_indicies),shuffle_index]
+
+                if self.root_dnode.transform(ft_tmp):
+                    votes_array_TF[i, 0] += 1
+                else:
+                    votes_array_TF[i, 1] += 1
 
 class dnode():
     def __init__(self, h, training_set_indicies, features_array, features_class_array):
@@ -136,7 +153,15 @@ class dnode():
 
         num_features = features_array.shape[1]
 
-        self.features_indicies = [random.randrange(0, num_features)]
+        use_ratios = True
+
+        if use_ratios:
+            self.features_indicies = [random.randrange(0, num_features) for _ in range(10)]
+            self.weights = [np.random.uniform(-1., 1.) for _ in range(10)]
+            #self.transform_features = lambda x, c=self.features_indicies, w=self.weights: w[0]*1./(1e-16 + x[c[0]]) + w[1]*np.log(1e-16+x[c[1]])
+            self.transform_features = lambda x, c=self.features_indicies, w=self.weights: np.dot([x[i] for i in c], w)
+        else:
+            self.features_indicies = [random.randrange(0, num_features)]
 
         if self.weights == None and len(self.features_indicies) == 1:
             self.transform_features = lambda x, c=self.features_indicies[0]: x[c]
@@ -149,7 +174,7 @@ class dnode():
         info_gain_best = 0.
 
         # Determine splits.
-        for _ in range(20):
+        for _ in range(10):
             split_val_try = np.random.uniform(amin, amax)
 
             left_inds = np.array(training_set_indicies)[transformed_features < split_val_try]
@@ -161,15 +186,15 @@ class dnode():
             right_T = np.sum(features_class_array[right_inds])
             right_F = len(right_inds) - right_T
 
-            if left_T + right_T == 0 or left_F + right_F == 0:
-                self.split_vals = [split_val_try]
-                self.height_in_tree = 0
-                break
 
             info_gain = information_gain(left_F, left_T, right_F, right_T)
             if info_gain > info_gain_best:
                 info_gain_best = info_gain
                 self.split_vals = [split_val_try]
+
+        if len(self.split_vals) == 0:
+            self.split_vals = [(amax - amin)/2.]
+            self.height_in_tree = 0
 
         left_inds = np.array(training_set_indicies)[transformed_features < self.split_vals[0]]
         right_inds = np.array(training_set_indicies)[transformed_features >= self.split_vals[0]]
@@ -201,7 +226,7 @@ class dnode():
                 elif left_T + right_T <= left_F + right_F:
                     self.child_nodes = [ lambda _: False ]
                 else:
-                    self.child_odes = [ lambda _: True if random.random() < 0.5 else False ]
+                    self.child_nodes = [ lambda _: True if random.random() < 0.5 else False ]
 
     def transform(self, input_features):
         """ Transform array of features and return classifications. """
@@ -237,5 +262,5 @@ if __name__ == '__main__':
             print('Finished loading file.')
 
     for _ in range(1):
-        RF = RandomForest(200, 2, range(A.shape[0]), A, Y)
+        RF = RandomForest(100, 2, range(A.shape[0]), A, Y)
         RF.summary()
