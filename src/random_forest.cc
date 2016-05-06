@@ -23,6 +23,7 @@ random_forest<T>::read_F (std::string& in)
 {
     ifstream f(in);
     f >> this->F;
+    this->tree.resize ( static_cast<unsigned>(1)<<(this->F) - 1); // 2^{F}-1 (geometric series sum).
 }
 
 template <class T>
@@ -56,7 +57,7 @@ random_forest<T>::read_test_data (std::string& in)
     ifstream f(in);
 
     int len = num_test * num_features;
-    test_data.resize (len);
+    this->test_data.resize (len);
 
     T* it = &test_data[0];
 
@@ -73,8 +74,8 @@ random_forest<T>::read_training_data (std::string& in)
 
     ifstream f(in);
 
-    training_data.resize (num_training * (num_features + 1));
-    class_data.resize (num_training);
+    this->training_data.resize (num_training * (num_features + 1));
+    this->class_data.resize (num_training);
 
     T* it = &training_data[0];
     vector<bool>::iterator cit = class_data.begin();
