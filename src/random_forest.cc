@@ -77,12 +77,12 @@ random_forest<T>::read_training_data (std::string& in)
     this->training_data.resize (num_training * (num_features + 1));
     this->class_data.resize (num_training);
 
-    T* it = &training_data[0];
+    T* td = &training_data[0];
     vector<bool>::iterator cit = class_data.begin();
 
     for (int i = 0; i < num_training; ++i) {
         for (int j = 0; j < num_features; ++j) {
-            f >> *(it++);
+            f >> td[j*num_training + i];
         }
         f >> tmp;
         *(cit++) = tmp;
